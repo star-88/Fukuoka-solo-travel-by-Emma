@@ -1,3 +1,4 @@
+
 name: Deploy to GitHub Pages
 
 on:
@@ -31,6 +32,11 @@ jobs:
         
       - name: Build
         run: npm run build
+        
+      # 關鍵步驟：新增一個空白的 .nojekyll 檔案
+      # 這會告訴 GitHub Pages 不要忽略以底線開頭的檔案 (Vite 打包常會有這種檔案)
+      - name: Create .nojekyll
+        run: touch ./dist/.nojekyll
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
