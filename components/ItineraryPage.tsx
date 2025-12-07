@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   DndContext, 
   closestCorners, 
@@ -10,7 +10,8 @@ import {
   DragOverEvent,
   DragStartEvent,
   defaultDropAnimationSideEffects,
-  DragOverlay
+  DragOverlay,
+  useDroppable
 } from '@dnd-kit/core';
 import { 
   arrayMove, 
@@ -24,6 +25,77 @@ import { ItineraryCard } from './ItineraryCard';
 import { Button } from './Button';
 import { Modal } from './Modal';
 import { clsx } from 'clsx';
+
+// --- SortableSection Component ---
+// This component makes the list container itself a droppable zone, 
+// allowing items to be dropped even when the list is empty.
+
+interface SortableSectionProps {
+  id: string;
+  title: string;
+  icon: React.ReactNode;
+  items: ItineraryItem[];
+  isDining?: boolean;
+  onDeleteItem: (id: string) => void;
+  onEditItem: (item: ItineraryItem) => void;
+}
+
+const SortableSection: React.FC<SortableSectionProps> = ({ 
+  id, title, icon, items, isDining = false, onDeleteItem, onEditItem 
+}) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: id,
+  });
+
+  return (
+    <div className="mb-6 last:mb-24">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3 px-1 sticky top-0 bg-[#f8fafc]/95 backdrop-blur-sm z-10 py-2">
+        {icon}
+        <h3 className="font-bold text-gray-700 text-lg">{title}</h3>
+        <span className={clsx(
+            "text-xs font-medium px-2 py-0.5 rounded-full",
+            isDining ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-400"
+          )}>
+          {items.length}
+        </span>
+      </div>
+
+      <SortableContext 
+        id={id}
+        items={items.map(i => i.id)} 
+        strategy={verticalListSortingStrategy}
+      >
+        <div 
+          ref={setNodeRef}
+          className={clsx(
+            "space-y-3 min-h-[100px] rounded-xl transition-colors border-2 p-2",
+            isOver ? "bg-lavender-50 border-lavender-200" : "border-transparent",
+            items.length === 0 && !isOver ? "border-dashed border-gray-200 bg-gray-50/50" : ""
+          )}
+        >
+          {items.length === 0 && (
+            <div className="h-full flex items-center justify-center text-gray-400 text-sm font-medium py-4 pointer-events-none">
+              {isDining ? '尚無餐廳' : '拖曳至此新增行程'}
+            </div>
+          )}
+          
+          {items.map(item => (
+            <ItineraryCard 
+              key={item.id} 
+              item={item} 
+              onDelete={onDeleteItem} 
+              onEdit={onEditItem}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </div>
+  );
+};
+
+
+// --- Main ItineraryPage Component ---
 
 interface ItineraryPageProps {
   dateStr: string;
@@ -65,8 +137,6 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
   const eveningItems = items.filter(i => i.type === 'activity' && i.period === 'evening');
   const diningItems = items.filter(i => i.type === 'dining');
 
-  const getContainerId = (period: Period | 'dining') => period;
-
   // -- DND Handlers --
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -79,37 +149,36 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
     const { active, over } = event;
     if (!over) return;
 
-    // We only handle cross-container logic for activities here to show optimistic preview
-    // But since we use onUpdateItems which updates parent state, we can do it in DragOver
-    // However, frequent parent updates might be heavy. 
-    // For this size, we will handle logic in DragEnd to keep it simple and safe, 
-    // OR implement the logic to handle container change.
-    
-    // NOTE: For smooth "moving between lists" feel, dnd-kit recommends handling it in onDragOver.
-    
-    const activeData = active.data.current as ItineraryItem | undefined;
-    const overId = over.id;
-    
-    // Find containers
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Find which container the item belongs to
+    // Container IDs are: 'morning', 'afternoon', 'evening', 'dining'
     const findContainer = (id: string): string | undefined => {
       if (['morning', 'afternoon', 'evening', 'dining'].includes(id)) return id;
       return items.find(i => i.id === id)?.period || 
              (items.find(i => i.id === id)?.type === 'dining' ? 'dining' : undefined);
     };
 
-    const activeContainer = findContainer(active.id as string);
-    const overContainer = findContainer(overId as string);
+    const activeContainer = findContainer(activeId);
+    const overContainer = findContainer(overId);
 
     if (!activeContainer || !overContainer || activeContainer === overContainer) {
       return;
     }
 
-    // Logic for cross-container move
-    if (activeData?.type === 'activity' && overContainer !== 'dining') {
-      // Moving activity between periods
-      // We essentially just need to update the item's period in the items array
+    // Logic for moving between containers (periods)
+    // We only allow moving Activities between periods. 
+    // Moving Activity <-> Dining usually involves type change logic which is complex for drag, 
+    // so we restrict to Activity <-> Activity periods or Dining <-> Dining (if multiple dining sections existed).
+    
+    // Allow Activity to move between morning/afternoon/evening
+    const isActivityMove = ['morning', 'afternoon', 'evening'].includes(activeContainer) && 
+                           ['morning', 'afternoon', 'evening'].includes(overContainer);
+
+    if (isActivityMove) {
       const updatedItems = items.map(item => {
-        if (item.id === active.id) {
+        if (item.id === activeId) {
           return { ...item, period: overContainer as Period };
         }
         return item;
@@ -128,17 +197,20 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
     const activeId = active.id as string;
     const overId = over.id as string;
 
+    // If dropped on the same item, do nothing
     if (activeId === overId) return;
 
+    // Handle reordering within the items array
     const oldIndex = items.findIndex(i => i.id === activeId);
     const newIndex = items.findIndex(i => i.id === overId);
 
+    // Note: If dropping onto an empty container, overId is the container ID.
+    // In handleDragOver, we already switched the item's period to that container.
+    // So usually handleDragOver handles the "move to empty list" logic visually.
+    // Here we just handle sorting.
+
     if (oldIndex !== -1 && newIndex !== -1) {
-        // Reordering within items array is tricky if we want visual sorting within groups.
-        // We rely on arrayMove but we need to ensure the order respects the grouping.
-        // Actually, since we filter by period to render, arrayMove on the main list works
-        // as long as the period is correct (which handleDragOver ensures).
-        onUpdateItems(arrayMove(items, oldIndex, newIndex));
+      onUpdateItems(arrayMove(items, oldIndex, newIndex));
     }
   };
 
@@ -224,54 +296,6 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
     }
   };
 
-  // -- Render Helpers --
-
-  const renderSection = (title: string, icon: React.ReactNode, id: string, sectionItems: ItineraryItem[], isDining = false) => {
-    return (
-      <div className="mb-6 last:mb-24">
-         {/* Drop Zone Header */}
-        <div className="flex items-center gap-2 mb-3 px-1 sticky top-0 bg-[#f8fafc]/95 backdrop-blur-sm z-10 py-2">
-          {icon}
-          <h3 className="font-bold text-gray-700 text-lg">{title}</h3>
-          <span className={clsx(
-            "text-xs font-medium px-2 py-0.5 rounded-full",
-            isDining ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-400"
-          )}>
-            {sectionItems.length}
-          </span>
-        </div>
-        
-        <SortableContext 
-          id={id}
-          items={sectionItems.map(i => i.id)} 
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="space-y-3 min-h-[60px] rounded-xl transition-colors"
-               ref={(node) => {
-                 // Simplified drop target ref handling via SortableContext internally, 
-                 // but we can add visual cues if needed.
-               }}
-          >
-            {sectionItems.length === 0 ? (
-                <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 text-sm">
-                    {isDining ? '尚無餐廳' : '尚無行程'}
-                </div>
-            ) : (
-                sectionItems.map(item => (
-                    <ItineraryCard 
-                      key={item.id} 
-                      item={item} 
-                      onDelete={handleDeleteItem} 
-                      onEdit={handleEditItem}
-                    />
-                ))
-            )}
-          </div>
-        </SortableContext>
-      </div>
-    );
-  };
-
   return (
     <div className="p-4 relative min-h-full pb-24">
       <DndContext 
@@ -281,13 +305,44 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        {renderSection('上午', <Sun size={20} className="text-orange-400" />, 'morning', morningItems)}
-        {renderSection('下午', <Sunset size={20} className="text-lavender-500" />, 'afternoon', afternoonItems)}
-        {renderSection('晚上', <Moon size={20} className="text-indigo-400" />, 'evening', eveningItems)}
+        <SortableSection 
+          id="morning"
+          title="上午"
+          icon={<Sun size={20} className="text-orange-400" />}
+          items={morningItems}
+          onDeleteItem={handleDeleteItem}
+          onEditItem={handleEditItem}
+        />
+
+        <SortableSection 
+          id="afternoon"
+          title="下午"
+          icon={<Sunset size={20} className="text-lavender-500" />}
+          items={afternoonItems}
+          onDeleteItem={handleDeleteItem}
+          onEditItem={handleEditItem}
+        />
+
+        <SortableSection 
+          id="evening"
+          title="晚上"
+          icon={<Moon size={20} className="text-indigo-400" />}
+          items={eveningItems}
+          onDeleteItem={handleDeleteItem}
+          onEditItem={handleEditItem}
+        />
         
         <div className="my-6 border-t-2 border-dashed border-gray-200" />
         
-        {renderSection('餐廳 / 美食', <Utensils size={20} className="text-orange-500" />, 'dining', diningItems, true)}
+        <SortableSection 
+          id="dining"
+          title="餐廳 / 美食"
+          icon={<Utensils size={20} className="text-orange-500" />}
+          items={diningItems}
+          isDining={true}
+          onDeleteItem={handleDeleteItem}
+          onEditItem={handleEditItem}
+        />
 
         <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.5' } } }) }}>
            {activeItem ? <ItineraryCard item={activeItem} onDelete={() => {}} onEdit={() => {}} /> : null}
