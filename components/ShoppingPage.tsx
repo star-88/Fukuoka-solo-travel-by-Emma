@@ -22,6 +22,29 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
 
   const activeAlbum = activeAlbumId ? albums.find(a => a.id === activeAlbumId) : null;
 
+  // --- Navigation Logic Fix ---
+  const handleBack = () => {
+    if (isAddingMode) {
+      // If adding, just close the form and stay in the current view (Album or List)
+      setIsAddingMode(false);
+      // Optional: Clear form
+      setNewName('');
+      setNewImageUrl('');
+    } else if (activeAlbumId) {
+      // If viewing an album, go back to album list
+      setActiveAlbumId(null);
+    }
+  };
+
+  const showBackButton = isAddingMode || activeAlbumId !== null;
+
+  const getPageTitle = () => {
+    if (isAddingMode) {
+      return activeAlbumId ? '新增商品' : '新增相簿';
+    }
+    return activeAlbum ? activeAlbum.name : '購物清單';
+  };
+
   // --- Image Handling Logic (Compression) ---
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -257,9 +280,9 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
     <div className="p-4 pb-24 min-h-full animate-in fade-in duration-300">
       {/* Page Header */}
       <div className="flex items-center gap-2 mb-6 sticky top-0 bg-[#FDFDFF]/95 backdrop-blur-sm z-20 py-2">
-        {activeAlbum ? (
+        {showBackButton ? (
           <button 
-            onClick={() => setActiveAlbumId(null)} 
+            onClick={handleBack} 
             className="p-1.5 -ml-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
           >
             <ArrowLeft size={24} />
@@ -270,7 +293,7 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
           </div>
         )}
         <h2 className="text-2xl font-bold text-gray-800">
-          {activeAlbum ? activeAlbum.name : '購物清單'}
+          {getPageTitle()}
         </h2>
       </div>
 
