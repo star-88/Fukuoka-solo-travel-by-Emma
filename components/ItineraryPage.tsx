@@ -20,17 +20,22 @@ import {
   sortableKeyboardCoordinates, 
   verticalListSortingStrategy 
 } from '@dnd-kit/sortable';
-import { Sun, Sunset, Moon, Utensils } from 'lucide-react';
+import { Sun, Sunset, Moon, Utensils, ArrowLeft, Clock, MapPin, Link as LinkIcon, StickyNote, Car } from 'lucide-react';
 import { ItineraryItem, Period, ItemType } from '../types';
 import { ItineraryCard } from './ItineraryCard';
 import { Button } from './Button';
-import { Modal } from './Modal';
 import { clsx } from 'clsx';
 
-// --- SortableSection Component ---
-// This component makes the list container itself a droppable zone, 
-// allowing items to be dropped even when the list is empty.
+// --- Helper: Determine Period from Time ---
+const getPeriodFromTime = (time: string): Period => {
+  if (!time) return 'morning';
+  const [hour] = time.split(':').map(Number);
+  if (hour < 12) return 'morning';
+  if (hour < 18) return 'afternoon';
+  return 'evening';
+};
 
+// --- SortableSection Component ---
 interface SortableSectionProps {
   id: string;
   title: string;
@@ -109,7 +114,7 @@ interface ItineraryPageProps {
 }
 
 export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>(({ dateStr, items, onUpdateItems }, ref) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<ItineraryItem | null>(null);
   
@@ -119,7 +124,6 @@ export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>
   const [formTitle, setFormTitle] = useState('');
   const [formLink, setFormLink] = useState('');
   const [formTime, setFormTime] = useState('09:00');
-  const [formPeriod, setFormPeriod] = useState<Period>('morning');
   const [formTransport, setFormTransport] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [formIsReserved, setFormIsReserved] = useState(false);
@@ -164,7 +168,6 @@ export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>
     const overId = over.id as string;
 
     // Find which container the item belongs to
-    // Container IDs are: 'morning', 'afternoon', 'evening', 'dining'
     const findContainer = (id: string): string | undefined => {
       if (['morning', 'afternoon', 'evening', 'dining'].includes(id)) return id;
       return items.find(i => i.id === id)?.period || 
@@ -178,7 +181,6 @@ export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>
       return;
     }
 
-    // Logic for moving between containers (periods)
     const isActivityMove = ['morning', 'afternoon', 'evening'].includes(activeContainer) && 
                            ['morning', 'afternoon', 'evening'].includes(overContainer);
 
@@ -203,23 +205,22 @@ export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    if (activeId === overId) return;
-
-    const oldIndex = items.findIndex(i => i.id === activeId);
-    const newIndex = items.findIndex(i => i.id === overId);
-
-    if (oldIndex !== -1 && newIndex !== -1) {
-      onUpdateItems(arrayMove(items, oldIndex, newIndex));
+    if (activeId === activeId && overId === overId && activeId !== overId) {
+       const oldIndex = items.findIndex(i => i.id === activeId);
+       const newIndex = items.findIndex(i => i.id === overId);
+       if (oldIndex !== -1 && newIndex !== -1) {
+          onUpdateItems(arrayMove(items, oldIndex, newIndex));
+       }
     }
   };
 
-  // -- Modal / Form Handlers --
+  // -- Form Handlers --
 
   const handleOpenAddModal = () => {
     setEditingId(null);
     setFormType('activity');
     resetForm();
-    setIsModalOpen(true);
+    setIsFormOpen(true);
   };
 
   const handleEditItem = (item: ItineraryItem) => {
@@ -231,21 +232,19 @@ export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>
     
     if (item.type === 'activity') {
       setFormTime(item.time || '09:00');
-      setFormPeriod(item.period || 'morning');
       setFormTransport(item.transport || '');
     } else {
       setFormIsReserved(item.isReserved || false);
       setFormReservationTime(item.reservationTime || '');
     }
     
-    setIsModalOpen(true);
+    setIsFormOpen(true);
   };
 
   const resetForm = () => {
     setFormTitle('');
     setFormLink('');
     setFormTime('09:00');
-    setFormPeriod('morning');
     setFormTransport('');
     setFormNotes('');
     setFormIsReserved(false);
@@ -266,10 +265,13 @@ export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>
     let newItem: ItineraryItem;
 
     if (formType === 'activity') {
+      // Auto-calculate period based on time
+      const period = getPeriodFromTime(formTime);
+      
       newItem = {
         ...baseItem,
         type: 'activity',
-        period: formPeriod,
+        period: period,
         time: formTime,
         transport: formTransport || undefined,
       };
@@ -288,7 +290,7 @@ export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>
       onUpdateItems([...items, newItem]);
     }
 
-    setIsModalOpen(false);
+    setIsFormOpen(false);
     resetForm();
   };
 
@@ -299,220 +301,247 @@ export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>
   };
 
   return (
-    <div className="p-4 relative min-h-full pb-32">
-      <DndContext 
-        sensors={sensors} 
-        collisionDetection={closestCorners} 
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableSection 
-          id="morning"
-          title="上午"
-          icon={<Sun size={20} className="text-orange-400" />}
-          items={morningItems}
-          onDeleteItem={handleDeleteItem}
-          onEditItem={handleEditItem}
-        />
+    <>
+      {/* Main List View */}
+      <div className="p-4 relative min-h-full pb-32">
+        <DndContext 
+          sensors={sensors} 
+          collisionDetection={closestCorners} 
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableSection 
+            id="morning"
+            title="上午"
+            icon={<Sun size={20} className="text-orange-400" />}
+            items={morningItems}
+            onDeleteItem={handleDeleteItem}
+            onEditItem={handleEditItem}
+          />
 
-        <SortableSection 
-          id="afternoon"
-          title="下午"
-          icon={<Sunset size={20} className="text-lavender-500" />}
-          items={afternoonItems}
-          onDeleteItem={handleDeleteItem}
-          onEditItem={handleEditItem}
-        />
+          <SortableSection 
+            id="afternoon"
+            title="下午"
+            icon={<Sunset size={20} className="text-lavender-500" />}
+            items={afternoonItems}
+            onDeleteItem={handleDeleteItem}
+            onEditItem={handleEditItem}
+          />
 
-        <SortableSection 
-          id="evening"
-          title="晚上"
-          icon={<Moon size={20} className="text-indigo-400" />}
-          items={eveningItems}
-          onDeleteItem={handleDeleteItem}
-          onEditItem={handleEditItem}
-        />
-        
-        <div className="my-6 border-t-2 border-dashed border-gray-200" />
-        
-        <SortableSection 
-          id="dining"
-          title="餐廳 / 美食"
-          icon={<Utensils size={20} className="text-orange-500" />}
-          items={diningItems}
-          isDining={true}
-          onDeleteItem={handleDeleteItem}
-          onEditItem={handleEditItem}
-        />
-
-        <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.5' } } }) }}>
-           {activeItem ? <ItineraryCard item={activeItem} onDelete={() => {}} onEdit={() => {}} /> : null}
-        </DragOverlay>
-      </DndContext>
-
-      {/* Add/Edit Modal */}
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title={editingId ? "編輯項目" : "新增項目"}
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
+          <SortableSection 
+            id="evening"
+            title="晚上"
+            icon={<Moon size={20} className="text-indigo-400" />}
+            items={eveningItems}
+            onDeleteItem={handleDeleteItem}
+            onEditItem={handleEditItem}
+          />
           
-          {/* Type Toggle */}
-          {!editingId && (
-            <div className="flex bg-gray-100 p-1 rounded-xl mb-4">
-              <button
-                type="button"
-                className={clsx(
-                  "flex-1 py-1.5 text-sm font-bold rounded-lg transition-all h-11",
-                  formType === 'activity' ? "bg-white text-lavender-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                )}
-                onClick={() => setFormType('activity')}
-              >
-                行程景點
-              </button>
-              <button
-                 type="button"
-                 className={clsx(
-                   "flex-1 py-1.5 text-sm font-bold rounded-lg transition-all h-11",
-                   formType === 'dining' ? "bg-white text-orange-500 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                 )}
-                 onClick={() => setFormType('dining')}
-               >
-                 餐廳美食
-               </button>
-            </div>
-          )}
+          <div className="my-6 border-t-2 border-dashed border-gray-200" />
+          
+          <SortableSection 
+            id="dining"
+            title="餐廳 / 美食"
+            icon={<Utensils size={20} className="text-orange-500" />}
+            items={diningItems}
+            isDining={true}
+            onDeleteItem={handleDeleteItem}
+            onEditItem={handleEditItem}
+          />
 
-          {/* Common Fields */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {formType === 'activity' ? '行程名稱' : '餐廳名稱'}
-            </label>
-            <input 
-              required
-              className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
-              value={formTitle}
-              onChange={e => setFormTitle(e.target.value)}
-              placeholder={formType === 'activity' ? "例如：東京鐵塔" : "例如：敘敘苑燒肉"}
-            />
+          <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.5' } } }) }}>
+             {activeItem ? <ItineraryCard item={activeItem} onDelete={() => {}} onEdit={() => {}} /> : null}
+          </DragOverlay>
+        </DndContext>
+      </div>
+
+      {/* Full Screen Add/Edit Page Overlay */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-[100] bg-[#FDFDFF] flex flex-col animate-in slide-in-from-bottom-5 duration-300">
+          
+          {/* Form Header */}
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3 bg-white/90 backdrop-blur-md pt-[env(safe-area-inset-top,20px)] mt-0 shrink-0 shadow-sm">
+            <button 
+              onClick={() => setIsFormOpen(false)}
+              className="p-2 -ml-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <h2 className="text-lg font-bold text-gray-800">
+              {editingId ? "編輯項目" : "新增行程"}
+            </h2>
           </div>
 
-          {/* Activity Specific Fields */}
-          {formType === 'activity' && (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">時間</label>
-                  <input 
-                    type="time"
-                    required
-                    className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
-                    value={formTime}
-                    onChange={e => setFormTime(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">時段</label>
-                  <select 
-                    className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
-                    value={formPeriod}
-                    onChange={e => setFormPeriod(e.target.value as Period)}
-                  >
-                    <option value="morning">上午</option>
-                    <option value="afternoon">下午</option>
-                    <option value="evening">晚上</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                 <label className="block text-sm font-medium text-gray-700 mb-1">交通方式</label>
-                 <input 
-                   className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
-                   value={formTransport}
-                   onChange={e => setFormTransport(e.target.value)}
-                   placeholder="例如：地鐵、步行"
-                 />
-              </div>
-            </>
-          )}
-
-          {/* Dining Specific Fields */}
-          {formType === 'dining' && (
-            <div className="py-2 space-y-3">
-              <label className="block text-sm font-medium text-gray-700">是否預訂</label>
+          {/* Form Content */}
+          <div className="flex-1 overflow-y-auto p-4 pb-[env(safe-area-inset-bottom,40px)]">
+            <form onSubmit={handleSubmit} className="space-y-6 max-w-lg mx-auto">
               
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="radio"
-                    name="reservedStatus"
-                    checked={!formIsReserved}
-                    onChange={() => setFormIsReserved(false)}
-                    className="w-5 h-5 text-lavender-500 border-gray-300 focus:ring-lavender-400"
-                  />
-                  <span className="text-gray-700">否</span>
-                </label>
-                
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="radio"
-                    name="reservedStatus"
-                    checked={formIsReserved}
-                    onChange={() => setFormIsReserved(true)}
-                    className="w-5 h-5 text-lavender-500 border-gray-300 focus:ring-lavender-400"
-                  />
-                  <span className="text-gray-700">是</span>
-                </label>
-              </div>
-
-              {/* Conditional Reservation Time Input */}
-              {formIsReserved && (
-                <div className="animate-in slide-in-from-top-2 fade-in duration-200 pt-1">
-                   <label className="block text-sm font-medium text-gray-700 mb-1">預訂時間</label>
-                   <input 
-                    type="time"
-                    required={formIsReserved}
-                    className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
-                    value={formReservationTime}
-                    onChange={e => setFormReservationTime(e.target.value)}
-                  />
+              {/* Type Toggle */}
+              {!editingId && (
+                <div className="flex bg-gray-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    className={clsx(
+                      "flex-1 py-2 text-sm font-bold rounded-lg transition-all h-11",
+                      formType === 'activity' ? "bg-white text-lavender-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                    )}
+                    onClick={() => setFormType('activity')}
+                  >
+                    行程景點
+                  </button>
+                  <button
+                     type="button"
+                     className={clsx(
+                       "flex-1 py-2 text-sm font-bold rounded-lg transition-all h-11",
+                       formType === 'dining' ? "bg-white text-orange-500 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                     )}
+                     onClick={() => setFormType('dining')}
+                   >
+                     餐廳美食
+                   </button>
                 </div>
               )}
-            </div>
-          )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">連結 (Google Maps/訂位)</label>
-            <input 
-              type="url"
-              className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
-              value={formLink}
-              onChange={e => setFormLink(e.target.value)}
-              placeholder="https://..."
-            />
-          </div>
+              {/* Title Input */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                  <MapPin size={16} className="text-lavender-500"/>
+                  {formType === 'activity' ? '行程名稱' : '餐廳名稱'}
+                </label>
+                <input 
+                  required
+                  className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lavender-200 outline-none text-base shadow-sm"
+                  value={formTitle}
+                  onChange={e => setFormTitle(e.target.value)}
+                  placeholder={formType === 'activity' ? "例如：東京鐵塔" : "例如：敘敘苑燒肉"}
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">備註</label>
-            <textarea 
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none min-h-[80px]"
-              value={formNotes}
-              onChange={e => setFormNotes(e.target.value)}
-              placeholder="注意事項、訂位代號等..."
-            />
-          </div>
+              {/* Activity Specific Fields */}
+              {formType === 'activity' && (
+                <div className="space-y-6">
+                  {/* Time Input - Full Width, 24h native */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                      <Clock size={16} className="text-lavender-500"/>
+                      時間 (24小時制)
+                    </label>
+                    <input 
+                      type="time"
+                      required
+                      className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lavender-200 outline-none text-base shadow-sm"
+                      value={formTime}
+                      onChange={e => setFormTime(e.target.value)}
+                    />
+                    <p className="text-xs text-gray-400 mt-1.5 ml-1">
+                      * 系統將根據時間自動分類為上午、下午或晚上
+                    </p>
+                  </div>
 
-          <div className="pt-2">
-            <Button type="submit" className="w-full font-bold h-11">
-              {editingId ? '儲存變更' : '確認新增'}
-            </Button>
+                  <div>
+                     <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                       <Car size={16} className="text-lavender-500"/>
+                       交通方式
+                     </label>
+                     <input 
+                       className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lavender-200 outline-none text-base shadow-sm"
+                       value={formTransport}
+                       onChange={e => setFormTransport(e.target.value)}
+                       placeholder="例如：地鐵、步行 (選填)"
+                     />
+                  </div>
+                </div>
+              )}
+
+              {/* Dining Specific Fields */}
+              {formType === 'dining' && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-3">是否預訂</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer bg-white px-4 py-3 rounded-xl border border-gray-200 flex-1 justify-center shadow-sm">
+                        <input 
+                          type="radio"
+                          name="reservedStatus"
+                          checked={!formIsReserved}
+                          onChange={() => setFormIsReserved(false)}
+                          className="w-5 h-5 text-lavender-500 border-gray-300 focus:ring-lavender-400"
+                        />
+                        <span className="text-gray-700 font-medium">否</span>
+                      </label>
+                      
+                      <label className="flex items-center gap-2 cursor-pointer bg-white px-4 py-3 rounded-xl border border-gray-200 flex-1 justify-center shadow-sm">
+                        <input 
+                          type="radio"
+                          name="reservedStatus"
+                          checked={formIsReserved}
+                          onChange={() => setFormIsReserved(true)}
+                          className="w-5 h-5 text-lavender-500 border-gray-300 focus:ring-lavender-400"
+                        />
+                        <span className="text-gray-700 font-medium">是</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Conditional Reservation Time Input */}
+                  {formIsReserved && (
+                    <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+                       <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                         <Clock size={16} className="text-lavender-500"/>
+                         預訂時間
+                       </label>
+                       <input 
+                        type="time"
+                        required={formIsReserved}
+                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lavender-200 outline-none text-base shadow-sm"
+                        value={formReservationTime}
+                        onChange={e => setFormReservationTime(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Link Input */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                  <LinkIcon size={16} className="text-lavender-500"/>
+                  連結 (Google Maps/訂位)
+                </label>
+                <input 
+                  type="url"
+                  className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lavender-200 outline-none text-base shadow-sm"
+                  value={formLink}
+                  onChange={e => setFormLink(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+
+              {/* Notes Input */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                  <StickyNote size={16} className="text-lavender-500"/>
+                  備註
+                </label>
+                <textarea 
+                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lavender-200 outline-none min-h-[120px] text-base shadow-sm resize-none"
+                  value={formNotes}
+                  onChange={e => setFormNotes(e.target.value)}
+                  placeholder="注意事項、訂位代號等..."
+                />
+              </div>
+
+              <div className="pt-6 pb-8">
+                <Button type="submit" className="w-full font-bold h-12 text-lg shadow-md shadow-lavender-200/50">
+                  {editingId ? '儲存變更' : '確認新增'}
+                </Button>
+              </div>
+            </form>
           </div>
-        </form>
-      </Modal>
-    </div>
+        </div>
+      )}
+    </>
   );
 });
 
