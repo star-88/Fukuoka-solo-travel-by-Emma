@@ -60,7 +60,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
+    <div className="min-h-screen bg-[#FDFDFF] font-sans text-gray-900 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-30">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-center relative">

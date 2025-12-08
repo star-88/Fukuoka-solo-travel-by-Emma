@@ -50,7 +50,7 @@ const SortableSection: React.FC<SortableSectionProps> = ({
   return (
     <div className="mb-6 last:mb-24">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-3 px-1 sticky top-0 bg-[#f8fafc]/95 backdrop-blur-sm z-10 py-2">
+      <div className="flex items-center gap-2 mb-3 px-1 sticky top-0 bg-[#FDFDFF]/95 backdrop-blur-sm z-10 py-2">
         {icon}
         <h3 className="font-bold text-gray-700 text-lg">{title}</h3>
         <span className={clsx(
