@@ -1,21 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ShoppingBag, Settings, Download, Upload, Calendar, Plus } from 'lucide-react';
+import { ShoppingBag, Settings, Calendar, Plus } from 'lucide-react';
 import { TABS, INITIAL_TODOS, INITIAL_ITINERARY, INITIAL_SHOPPING_LIST } from './constants';
 import { TabConfig, TodosState, ItineraryState, ItineraryItem, ShoppingAlbum } from './types';
 import { PreTripPage } from './components/PreTripPage';
 import { ItineraryPage, ItineraryPageHandle } from './components/ItineraryPage';
 import { ShoppingPage } from './components/ShoppingPage';
-import { Modal } from './components/Modal';
-import { Button } from './components/Button';
+import { SettingsPage } from './components/SettingsPage';
 
-type ViewMode = 'itinerary' | 'shopping';
+type ViewMode = 'itinerary' | 'shopping' | 'settings';
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('itinerary');
   const [activeTab, setActiveTab] = useState<string>('prep'); // Itinerary tabs (prep, day1...)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Ref to access ItineraryPage methods
@@ -101,7 +99,8 @@ const App: React.FC = () => {
           if (json.shoppingAlbums) setShoppingAlbums(json.shoppingAlbums);
           
           alert('資料還原成功！');
-          setIsSettingsOpen(false);
+          // Navigate back to itinerary to see changes
+          setViewMode('itinerary');
         }
       } catch (error) {
         console.error('Restore failed', error);
@@ -119,6 +118,16 @@ const App: React.FC = () => {
   const currentTabConfig = TABS.find(t => t.id === activeTab);
 
   const renderContent = () => {
+    if (viewMode === 'settings') {
+      return (
+        <SettingsPage 
+          onBackup={handleBackup} 
+          onRestore={handleRestore} 
+          fileInputRef={fileInputRef} 
+        />
+      );
+    }
+
     if (viewMode === 'shopping') {
       return <ShoppingPage albums={shoppingAlbums} onUpdateAlbums={setShoppingAlbums} />;
     }
@@ -164,7 +173,7 @@ const App: React.FC = () => {
                  }}
                />
              </div>
-             <h1 className="text-lg font-bold tracking-tight text-gray-800">艾瑪的福岡之旅</h1>
+             <h1 className="text-lg font-bold tracking-tight text-gray-800">艾瑪ㄉ福岡之旅✨</h1>
           </div>
 
           {/* Right: Add Button (Only visible in Itinerary Mode & NOT Prep tab) */}
@@ -246,69 +255,18 @@ const App: React.FC = () => {
 
           {/* Settings Tab */}
           <button 
-            onClick={() => setIsSettingsOpen(true)}
-            className="flex flex-col items-center gap-1 transition-all duration-200 text-gray-400 hover:text-gray-600 active:scale-95"
+            onClick={() => setViewMode('settings')}
+            className={clsx(
+              "flex flex-col items-center gap-1 transition-all duration-200",
+              viewMode === 'settings' ? "text-lavender-500 scale-110" : "text-gray-400 hover:text-gray-600"
+            )}
           >
-            <Settings size={16} strokeWidth={2} />
+            <Settings size={16} strokeWidth={viewMode === 'settings' ? 2.5 : 2} />
             <span className="text-[10px] font-bold">備份設定</span>
           </button>
           
         </div>
       </div>
-
-      {/* Settings Modal */}
-      <Modal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-        title="設定與備份"
-      >
-        <div className="space-y-6 py-2">
-          {/* Backup Section */}
-          <div className="bg-lavender-50 p-4 rounded-xl">
-            <h3 className="font-bold text-lavender-700 flex items-center gap-2 mb-2">
-              <Download size={20} />
-              備份資料
-            </h3>
-            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-              將目前的行程、購物清單、行前準備等所有資料下載成檔案保存。建議在更新 App 前先進行備份。
-            </p>
-            <Button onClick={handleBackup} className="w-full bg-lavender-400 hover:bg-lavender-500 text-white font-bold h-11">
-              下載備份檔案 (.json)
-            </Button>
-          </div>
-
-          {/* Restore Section */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-            <h3 className="font-bold text-gray-700 flex items-center gap-2 mb-2">
-              <Upload size={20} />
-              還原資料
-            </h3>
-            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-              選取之前的備份檔案來還原資料。
-              <br />
-              <span className="text-red-400 text-xs">注意：目前的資料將會被覆蓋。</span>
-            </p>
-            <input 
-              type="file" 
-              ref={fileInputRef}
-              onChange={handleRestore}
-              accept=".json"
-              className="hidden" 
-            />
-            <Button 
-              variant="secondary" 
-              onClick={() => fileInputRef.current?.click()} 
-              className="w-full h-11 font-medium"
-            >
-              選取檔案並還原
-            </Button>
-          </div>
-
-          <div className="text-center pt-4 border-t border-gray-100">
-             <p className="text-xs text-gray-400">艾瑪的福岡之旅 v1.2.0</p>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };
