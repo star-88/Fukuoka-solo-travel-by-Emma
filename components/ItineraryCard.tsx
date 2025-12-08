@@ -188,15 +188,15 @@ export const ItineraryCard: React.FC<ItineraryCardProps> = ({ item, onDelete, on
           <div className="py-[14px] px-[16px] flex justify-between items-start">
             <div className="flex-1 pr-4">
               {/* Header: Time & Transport */}
-              <div className="flex items-center gap-2 text-xs font-semibold mb-2">
+              <div className="flex items-center gap-2 text-xs font-semibold mb-[12px]">
                 {/* Time Tag */}
-                <div className="flex items-center gap-1 bg-[#F3CCF9] text-[#C239D4] px-2 py-1 rounded-[8px]">
+                <div className="flex items-center gap-1 bg-[#F9E4FC] text-[#83288F] px-2 py-1 rounded-[8px]">
                   <Clock size={12} />
                   {item.time}
                 </div>
                 {/* Transport Tag */}
                 {item.transport && (
-                  <div className="flex items-center gap-1 bg-[#F3CCF9] text-[#C239D4] px-2 py-1 rounded-[8px]">
+                  <div className="flex items-center gap-1 bg-[#F9E4FC] text-[#83288F] px-2 py-1 rounded-[8px]">
                     <Truck size={12} />
                     {item.transport}
                   </div>

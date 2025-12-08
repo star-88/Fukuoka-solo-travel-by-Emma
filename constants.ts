@@ -1,4 +1,5 @@
-import { TabConfig, TodosState, ItineraryState } from './types';
+
+import { TabConfig, TodosState, ItineraryState, ShoppingAlbum } from './types';
 
 export const TABS: TabConfig[] = [
   { id: 'prep', label: '行前', subLabel: '準備' },
@@ -7,6 +8,7 @@ export const TABS: TabConfig[] = [
   { id: 'day3', label: '12/14', subLabel: '週日', dateStr: '2024-12-14' },
   { id: 'day4', label: '12/15', subLabel: '週一', dateStr: '2024-12-15' },
   { id: 'day5', label: '12/16', subLabel: '週二', dateStr: '2024-12-16' },
+  { id: 'shopping', label: '購物', subLabel: '清單' },
 ];
 
 export const INITIAL_TODOS: TodosState = {
@@ -37,3 +39,24 @@ export const INITIAL_ITINERARY: ItineraryState = {
     { id: 'i4', type: 'activity', date: '2024-12-13', period: 'morning', time: '10:00', title: '市區觀光', transport: '地鐵', notes: '買一日券' },
   ]
 };
+
+export const INITIAL_SHOPPING_LIST: ShoppingAlbum[] = [
+  {
+    id: 'album-1',
+    name: '無印良品',
+    items: [
+      { id: 'item-1', name: '咖哩速食包', checked: false, imageUrl: 'https://images.unsplash.com/photo-1596561234479-5808892d77d1?auto=format&fit=crop&q=80&w=300' },
+      { id: 'item-2', name: '筆記本', checked: false },
+    ]
+  },
+  {
+    id: 'album-2',
+    name: '3COINS',
+    items: []
+  },
+  {
+    id: 'album-3',
+    name: '大創',
+    items: []
+  }
+];

@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
-import { TABS, INITIAL_TODOS, INITIAL_ITINERARY } from './constants';
-import { TabConfig, TodosState, ItineraryState, ItineraryItem } from './types';
+import { ShoppingBag } from 'lucide-react';
+import { TABS, INITIAL_TODOS, INITIAL_ITINERARY, INITIAL_SHOPPING_LIST } from './constants';
+import { TabConfig, TodosState, ItineraryState, ItineraryItem, ShoppingAlbum } from './types';
 import { PreTripPage } from './components/PreTripPage';
 import { ItineraryPage } from './components/ItineraryPage';
+import { ShoppingPage } from './components/ShoppingPage';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('prep');
@@ -20,6 +23,11 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : INITIAL_ITINERARY;
   });
 
+  const [shoppingAlbums, setShoppingAlbums] = useState<ShoppingAlbum[]>(() => {
+    const saved = localStorage.getItem('lavender_shopping');
+    return saved ? JSON.parse(saved) : INITIAL_SHOPPING_LIST;
+  });
+
   useEffect(() => {
     localStorage.setItem('lavender_todos', JSON.stringify(todos));
   }, [todos]);
@@ -27,6 +35,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('lavender_itinerary', JSON.stringify(itinerary));
   }, [itinerary]);
+
+  useEffect(() => {
+    localStorage.setItem('lavender_shopping', JSON.stringify(shoppingAlbums));
+  }, [shoppingAlbums]);
 
   // -- Handlers --
 
@@ -42,6 +54,10 @@ const App: React.FC = () => {
   const renderContent = () => {
     if (activeTab === 'prep') {
       return <PreTripPage todos={todos} onUpdate={setTodos} />;
+    }
+
+    if (activeTab === 'shopping') {
+      return <ShoppingPage albums={shoppingAlbums} onUpdateAlbums={setShoppingAlbums} />;
     }
 
     const dateStr = currentTabConfig?.dateStr;
@@ -63,7 +79,9 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#FDFDFF] font-sans text-gray-900 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-30">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-center relative">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between relative">
+          
+          {/* Logo & Title */}
           <div className="flex items-center gap-3">
              <div className="w-10 h-10 rounded-full overflow-hidden shadow-sm border border-lavender-100 flex-shrink-0">
                <img 
@@ -80,6 +98,20 @@ const App: React.FC = () => {
              </div>
              <h1 className="text-xl font-bold tracking-tight text-gray-800">艾瑪的福岡之旅</h1>
           </div>
+
+          {/* Shopping Bag Button - Top Right */}
+          <button 
+            onClick={() => setActiveTab('shopping')}
+            className={clsx(
+              "p-2 rounded-full transition-colors active:scale-95",
+              activeTab === 'shopping' 
+                ? "bg-lavender-100 text-lavender-600" 
+                : "text-gray-400 hover:bg-gray-50 hover:text-lavender-500"
+            )}
+            aria-label="開啟購物清單"
+          >
+            <ShoppingBag size={24} />
+          </button>
         </div>
 
         {/* Tab Navigation - Scrollable on mobile */}
@@ -115,7 +147,6 @@ const App: React.FC = () => {
       <main className="flex-1 max-w-md mx-auto w-full relative">
         {renderContent()}
       </main>
-
     </div>
   );
 };

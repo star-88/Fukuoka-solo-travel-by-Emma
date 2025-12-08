@@ -1,4 +1,5 @@
-export type TabId = 'prep' | 'day1' | 'day2' | 'day3' | 'day4' | 'day5';
+
+export type TabId = 'prep' | 'day1' | 'day2' | 'day3' | 'day4' | 'day5' | 'shopping';
 
 export interface TabConfig {
   id: TabId;
@@ -45,4 +46,19 @@ export interface ItineraryItem {
 
 export interface ItineraryState {
   [date: string]: ItineraryItem[];
+}
+
+// --- Shopping List Types ---
+
+export interface ShoppingItem {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  checked: boolean;
+}
+
+export interface ShoppingAlbum {
+  id: string;
+  name: string;
+  items: ShoppingItem[];
 }
