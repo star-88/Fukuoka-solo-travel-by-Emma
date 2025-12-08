@@ -42,6 +42,7 @@ export interface ItineraryItem {
 
   // Dining specific fields
   isReserved?: boolean;
+  reservationTime?: string;
 }
 
 export interface ItineraryState {

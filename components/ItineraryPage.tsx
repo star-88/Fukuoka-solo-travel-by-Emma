@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   DndContext, 
@@ -6,12 +7,12 @@ import {
   PointerSensor, 
   useSensor, 
   useSensors, 
-  DragEndEvent,
-  DragOverEvent,
-  DragStartEvent,
-  defaultDropAnimationSideEffects,
-  DragOverlay,
-  useDroppable
+  DragEndEvent, 
+  DragOverEvent, 
+  DragStartEvent, 
+  defaultDropAnimationSideEffects, 
+  DragOverlay, 
+  useDroppable 
 } from '@dnd-kit/core';
 import { 
   arrayMove, 
@@ -118,6 +119,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
   const [formTransport, setFormTransport] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [formIsReserved, setFormIsReserved] = useState(false);
+  const [formReservationTime, setFormReservationTime] = useState('');
 
   // -- DND Sensors --
   const sensors = useSensors(
@@ -236,6 +238,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
       setFormTransport(item.transport || '');
     } else {
       setFormIsReserved(item.isReserved || false);
+      setFormReservationTime(item.reservationTime || '');
     }
     
     setIsModalOpen(true);
@@ -249,6 +252,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
     setFormTransport('');
     setFormNotes('');
     setFormIsReserved(false);
+    setFormReservationTime('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -277,6 +281,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
         ...baseItem,
         type: 'dining',
         isReserved: formIsReserved,
+        reservationTime: formIsReserved ? formReservationTime : undefined,
       };
     }
 
@@ -297,7 +302,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
   };
 
   return (
-    <div className="p-4 relative min-h-full pb-24">
+    <div className="p-4 relative min-h-full pb-32">
       <DndContext 
         sensors={sensors} 
         collisionDetection={closestCorners} 
@@ -350,9 +355,17 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
       </DndContext>
 
       {/* Floating Action Button */}
+      {/* 使用 z-9999 確保在最上層，調整 shadow 樣式以符合需求 */}
       <button
         onClick={handleOpenAddModal}
-        className="fixed bottom-6 right-6 h-14 w-14 bg-lavender-400 text-white rounded-full shadow-lg shadow-lavender-300 flex items-center justify-center hover:bg-lavender-500 hover:scale-105 active:scale-95 transition-all z-40"
+        className="fixed right-6 h-14 w-14 rounded-full flex items-center justify-center hover:brightness-95 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        style={{ 
+          backgroundColor: '#FAEFFB',
+          color: '#B481BB',
+          boxShadow: '0px 0px 20px rgba(232, 61, 255, 0.08)',
+          zIndex: 9999,
+          bottom: 'calc(2rem + env(safe-area-inset-bottom))'
+        }}
       >
         <Plus size={28} strokeWidth={2.5} />
       </button>
@@ -371,7 +384,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
               <button
                 type="button"
                 className={clsx(
-                  "flex-1 py-1.5 text-sm font-bold rounded-lg transition-all",
+                  "flex-1 py-1.5 text-sm font-bold rounded-lg transition-all h-11",
                   formType === 'activity' ? "bg-white text-lavender-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
                 )}
                 onClick={() => setFormType('activity')}
@@ -381,7 +394,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
               <button
                  type="button"
                  className={clsx(
-                   "flex-1 py-1.5 text-sm font-bold rounded-lg transition-all",
+                   "flex-1 py-1.5 text-sm font-bold rounded-lg transition-all h-11",
                    formType === 'dining' ? "bg-white text-orange-500 shadow-sm" : "text-gray-500 hover:text-gray-700"
                  )}
                  onClick={() => setFormType('dining')}
@@ -447,17 +460,46 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
 
           {/* Dining Specific Fields */}
           {formType === 'dining' && (
-            <div className="flex items-center gap-3 py-2">
-              <input 
-                type="checkbox"
-                id="reservedCheck"
-                checked={formIsReserved}
-                onChange={e => setFormIsReserved(e.target.checked)}
-                className="w-5 h-5 text-lavender-500 rounded focus:ring-lavender-400 border-gray-300"
-              />
-              <label htmlFor="reservedCheck" className="text-sm font-medium text-gray-700">
-                已完成預訂
-              </label>
+            <div className="py-2 space-y-3">
+              <label className="block text-sm font-medium text-gray-700">是否預訂</label>
+              
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="radio"
+                    name="reservedStatus"
+                    checked={!formIsReserved}
+                    onChange={() => setFormIsReserved(false)}
+                    className="w-5 h-5 text-lavender-500 border-gray-300 focus:ring-lavender-400"
+                  />
+                  <span className="text-gray-700">否</span>
+                </label>
+                
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="radio"
+                    name="reservedStatus"
+                    checked={formIsReserved}
+                    onChange={() => setFormIsReserved(true)}
+                    className="w-5 h-5 text-lavender-500 border-gray-300 focus:ring-lavender-400"
+                  />
+                  <span className="text-gray-700">是</span>
+                </label>
+              </div>
+
+              {/* Conditional Reservation Time Input */}
+              {formIsReserved && (
+                <div className="animate-in slide-in-from-top-2 fade-in duration-200 pt-1">
+                   <label className="block text-sm font-medium text-gray-700 mb-1">預訂時間</label>
+                   <input 
+                    type="time"
+                    required={formIsReserved}
+                    className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
+                    value={formReservationTime}
+                    onChange={e => setFormReservationTime(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -483,7 +525,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
           </div>
 
           <div className="pt-2">
-            <Button type="submit" className="w-full font-bold">
+            <Button type="submit" className="w-full font-bold h-11">
               {editingId ? '儲存變更' : '確認新增'}
             </Button>
           </div>

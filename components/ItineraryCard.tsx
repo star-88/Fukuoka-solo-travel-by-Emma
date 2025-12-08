@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -143,13 +144,14 @@ export const ItineraryCard: React.FC<ItineraryCardProps> = ({ item, onDelete, on
                 </h4>
               </div>
               <div className="flex items-center gap-2">
-                <span className={clsx(
-                  "text-xs px-2 py-0.5 rounded-[8px] flex items-center gap-1 font-medium",
-                  item.isReserved ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
-                )}>
-                  {item.isReserved ? <CheckCircle2 size={10} /> : <Circle size={10} />}
-                  {item.isReserved ? '已預訂' : '無預訂'}
-                </span>
+                
+                {/* Reservation Tag - Only show if reserved */}
+                {item.isReserved && (
+                  <span className="text-xs px-2 py-0.5 rounded-[8px] flex items-center gap-1 font-medium bg-green-100 text-green-700">
+                    <CheckCircle2 size={10} />
+                    {item.reservationTime ? `已預訂 ${item.reservationTime}` : '已預訂'}
+                  </span>
+                )}
                 
                 {item.link && (
                     <a 
