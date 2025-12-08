@@ -8,7 +8,6 @@ export const TABS: TabConfig[] = [
   { id: 'day3', label: '12/14', subLabel: '週日', dateStr: '2024-12-14' },
   { id: 'day4', label: '12/15', subLabel: '週一', dateStr: '2024-12-15' },
   { id: 'day5', label: '12/16', subLabel: '週二', dateStr: '2024-12-16' },
-  { id: 'shopping', label: '購物', subLabel: '清單' },
 ];
 
 export const INITIAL_TODOS: TodosState = {
