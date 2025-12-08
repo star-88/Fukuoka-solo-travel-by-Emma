@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          // 在 ESM 模組中，__dirname 可能不存在，改用 process.cwd() 較為保險
-          '@': path.resolve(process.cwd(), '.'),
+          // 在 ESM 模組中，__dirname 可能不存在，改用 path.resolve('.') 替代 process.cwd()
+          '@': path.resolve('.'),
         }
       }
     };

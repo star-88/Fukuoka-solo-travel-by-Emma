@@ -398,7 +398,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
             </label>
             <input 
               required
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
+              className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
               value={formTitle}
               onChange={e => setFormTitle(e.target.value)}
               placeholder={formType === 'activity' ? "例如：東京鐵塔" : "例如：敘敘苑燒肉"}
@@ -414,7 +414,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
                   <input 
                     type="time"
                     required
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
+                    className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
                     value={formTime}
                     onChange={e => setFormTime(e.target.value)}
                   />
@@ -422,7 +422,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">時段</label>
                   <select 
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
+                    className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
                     value={formPeriod}
                     onChange={e => setFormPeriod(e.target.value as Period)}
                   >
@@ -436,7 +436,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
               <div>
                  <label className="block text-sm font-medium text-gray-700 mb-1">交通方式</label>
                  <input 
-                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
+                   className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
                    value={formTransport}
                    onChange={e => setFormTransport(e.target.value)}
                    placeholder="例如：地鐵、步行"
@@ -465,7 +465,7 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
             <label className="block text-sm font-medium text-gray-700 mb-1">連結 (Google Maps/訂位)</label>
             <input 
               type="url"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
+              className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lavender-200 outline-none"
               value={formLink}
               onChange={e => setFormLink(e.target.value)}
               placeholder="https://..."

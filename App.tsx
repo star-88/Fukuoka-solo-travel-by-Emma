@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Plane } from 'lucide-react';
 import { clsx } from 'clsx';
 import { TABS, INITIAL_TODOS, INITIAL_ITINERARY } from './constants';
 import { TabConfig, TodosState, ItineraryState, ItineraryItem } from './types';
@@ -65,11 +64,21 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-30">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-center relative">
-          <div className="flex items-center gap-2 text-lavender-400">
-             <div className="bg-lavender-100 p-2 rounded-full">
-               <Plane size={24} className="text-lavender-500" />
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full overflow-hidden shadow-sm border border-lavender-100 flex-shrink-0">
+               <img 
+                 src="./icon.png" 
+                 alt="Logo" 
+                 className="w-full h-full object-cover"
+                 onError={(e) => {
+                   // Fallback if image fails to load
+                   e.currentTarget.style.display = 'none';
+                   e.currentTarget.parentElement!.className = "w-10 h-10 rounded-full bg-lavender-100 flex items-center justify-center text-lavender-500 font-bold";
+                   e.currentTarget.parentElement!.innerText = "旅";
+                 }}
+               />
              </div>
-             <h1 className="text-xl font-bold tracking-tight text-gray-800">LavenderTravel</h1>
+             <h1 className="text-xl font-bold tracking-tight text-gray-800">艾瑪的福岡之旅</h1>
           </div>
         </div>
 
