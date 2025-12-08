@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Square, CheckSquare, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Circle, CheckCircle2 } from 'lucide-react';
 import { TodoItem } from '../types';
 import { Button } from './Button';
 
@@ -48,9 +48,9 @@ export const TodoSection: React.FC<TodoSectionProps> = ({
           >
             <button 
               onClick={() => onToggle(item.id)}
-              className="text-lavender-400 hover:text-lavender-600 transition-colors"
+              className="text-lavender-400 hover:text-lavender-600 transition-colors focus:outline-none"
             >
-              {item.completed ? <CheckSquare size={22} /> : <Square size={22} />}
+              {item.completed ? <CheckCircle2 size={24} /> : <Circle size={24} />}
             </button>
             <span className={`flex-1 text-sm ${item.completed ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
               {item.text}
