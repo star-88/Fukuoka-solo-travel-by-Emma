@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, forwardRef, useImperativeHandle } from 'react';
 import { 
   DndContext, 
   closestCorners, 
@@ -20,7 +20,7 @@ import {
   sortableKeyboardCoordinates, 
   verticalListSortingStrategy 
 } from '@dnd-kit/sortable';
-import { Plus, Sun, Sunset, Moon, Utensils } from 'lucide-react';
+import { Sun, Sunset, Moon, Utensils } from 'lucide-react';
 import { ItineraryItem, Period, ItemType } from '../types';
 import { ItineraryCard } from './ItineraryCard';
 import { Button } from './Button';
@@ -98,13 +98,17 @@ const SortableSection: React.FC<SortableSectionProps> = ({
 
 // --- Main ItineraryPage Component ---
 
+export interface ItineraryPageHandle {
+  openAddModal: () => void;
+}
+
 interface ItineraryPageProps {
   dateStr: string;
   items: ItineraryItem[];
   onUpdateItems: (items: ItineraryItem[]) => void;
 }
 
-export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, onUpdateItems }) => {
+export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>(({ dateStr, items, onUpdateItems }, ref) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<ItineraryItem | null>(null);
@@ -120,6 +124,11 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
   const [formNotes, setFormNotes] = useState('');
   const [formIsReserved, setFormIsReserved] = useState(false);
   const [formReservationTime, setFormReservationTime] = useState('');
+
+  // -- Expose openAddModal to parent --
+  useImperativeHandle(ref, () => ({
+    openAddModal: handleOpenAddModal
+  }));
 
   // -- DND Sensors --
   const sensors = useSensors(
@@ -170,11 +179,6 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
     }
 
     // Logic for moving between containers (periods)
-    // We only allow moving Activities between periods. 
-    // Moving Activity <-> Dining usually involves type change logic which is complex for drag, 
-    // so we restrict to Activity <-> Activity periods or Dining <-> Dining (if multiple dining sections existed).
-    
-    // Allow Activity to move between morning/afternoon/evening
     const isActivityMove = ['morning', 'afternoon', 'evening'].includes(activeContainer) && 
                            ['morning', 'afternoon', 'evening'].includes(overContainer);
 
@@ -199,17 +203,10 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // If dropped on the same item, do nothing
     if (activeId === overId) return;
 
-    // Handle reordering within the items array
     const oldIndex = items.findIndex(i => i.id === activeId);
     const newIndex = items.findIndex(i => i.id === overId);
-
-    // Note: If dropping onto an empty container, overId is the container ID.
-    // In handleDragOver, we already switched the item's period to that container.
-    // So usually handleDragOver handles the "move to empty list" logic visually.
-    // Here we just handle sorting.
 
     if (oldIndex !== -1 && newIndex !== -1) {
       onUpdateItems(arrayMove(items, oldIndex, newIndex));
@@ -353,22 +350,6 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
            {activeItem ? <ItineraryCard item={activeItem} onDelete={() => {}} onEdit={() => {}} /> : null}
         </DragOverlay>
       </DndContext>
-
-      {/* Floating Action Button */}
-      {/* 使用 z-9999 確保在最上層，調整 shadow 樣式以符合需求 */}
-      <button
-        onClick={handleOpenAddModal}
-        className="fixed right-6 h-14 w-14 rounded-full flex items-center justify-center hover:brightness-95 hover:scale-105 active:scale-95 transition-all cursor-pointer"
-        style={{ 
-          backgroundColor: '#FAEFFB',
-          color: '#B481BB',
-          boxShadow: '0px 0px 20px rgba(232, 61, 255, 0.08)',
-          zIndex: 9999,
-          bottom: 'calc(2rem + env(safe-area-inset-bottom))'
-        }}
-      >
-        <Plus size={28} strokeWidth={2.5} />
-      </button>
 
       {/* Add/Edit Modal */}
       <Modal 
@@ -533,4 +514,6 @@ export const ItineraryPage: React.FC<ItineraryPageProps> = ({ dateStr, items, on
       </Modal>
     </div>
   );
-};
+});
+
+ItineraryPage.displayName = 'ItineraryPage';

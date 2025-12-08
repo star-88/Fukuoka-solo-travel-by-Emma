@@ -1,15 +1,25 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Settings, Download, Upload, Calendar, Plus } from 'lucide-react';
 import { TABS, INITIAL_TODOS, INITIAL_ITINERARY, INITIAL_SHOPPING_LIST } from './constants';
 import { TabConfig, TodosState, ItineraryState, ItineraryItem, ShoppingAlbum } from './types';
 import { PreTripPage } from './components/PreTripPage';
-import { ItineraryPage } from './components/ItineraryPage';
+import { ItineraryPage, ItineraryPageHandle } from './components/ItineraryPage';
 import { ShoppingPage } from './components/ShoppingPage';
+import { Modal } from './components/Modal';
+import { Button } from './components/Button';
+
+type ViewMode = 'itinerary' | 'shopping';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('prep');
+  const [viewMode, setViewMode] = useState<ViewMode>('itinerary');
+  const [activeTab, setActiveTab] = useState<string>('prep'); // Itinerary tabs (prep, day1...)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Ref to access ItineraryPage methods
+  const itineraryPageRef = useRef<ItineraryPageHandle>(null);
   
   // -- State Management with LocalStorage Persistence --
   
@@ -49,15 +59,73 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleBackup = () => {
+    const data = {
+      app: 'fukuoka-trip',
+      version: 1,
+      timestamp: new Date().toISOString(),
+      todos,
+      itinerary,
+      shoppingAlbums
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fukuoka-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        
+        // Simple validation
+        if (json.app !== 'fukuoka-trip' && !json.itinerary) {
+          alert('這不是有效的備份檔案！');
+          return;
+        }
+
+        if (window.confirm('確定要還原此備份嗎？目前的資料將會被覆蓋。')) {
+          if (json.todos) setTodos(json.todos);
+          if (json.itinerary) setItinerary(json.itinerary);
+          if (json.shoppingAlbums) setShoppingAlbums(json.shoppingAlbums);
+          
+          alert('資料還原成功！');
+          setIsSettingsOpen(false);
+        }
+      } catch (error) {
+        console.error('Restore failed', error);
+        alert('檔案讀取失敗，請確認檔案格式正確。');
+      }
+      
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
+
+  // -- Render Logic --
+
   const currentTabConfig = TABS.find(t => t.id === activeTab);
 
   const renderContent = () => {
-    if (activeTab === 'prep') {
-      return <PreTripPage todos={todos} onUpdate={setTodos} />;
+    if (viewMode === 'shopping') {
+      return <ShoppingPage albums={shoppingAlbums} onUpdateAlbums={setShoppingAlbums} />;
     }
 
-    if (activeTab === 'shopping') {
-      return <ShoppingPage albums={shoppingAlbums} onUpdateAlbums={setShoppingAlbums} />;
+    // Itinerary Mode
+    if (activeTab === 'prep') {
+      return <PreTripPage todos={todos} onUpdate={setTodos} />;
     }
 
     const dateStr = currentTabConfig?.dateStr;
@@ -67,6 +135,7 @@ const App: React.FC = () => {
     
     return (
       <ItineraryPage 
+        ref={itineraryPageRef}
         key={dateStr} // Force re-render on tab change for DND state reset
         dateStr={dateStr}
         items={items}
@@ -77,76 +146,169 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFDFF] font-sans text-gray-900 flex flex-col">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-30">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between relative">
+      {/* Top Header */}
+      <header className="bg-white shadow-sm sticky top-0 z-30 transition-all duration-300">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between relative h-14">
           
-          {/* Logo & Title */}
+          {/* Left: Logo & Title */}
           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full overflow-hidden shadow-sm border border-lavender-100 flex-shrink-0">
+             <div className="w-9 h-9 rounded-full overflow-hidden shadow-sm border border-lavender-100 flex-shrink-0">
                <img 
                  src="./icon.png" 
                  alt="Logo" 
                  className="w-full h-full object-cover"
                  onError={(e) => {
-                   // Fallback if image fails to load
                    e.currentTarget.style.display = 'none';
-                   e.currentTarget.parentElement!.className = "w-10 h-10 rounded-full bg-lavender-100 flex items-center justify-center text-lavender-500 font-bold";
+                   e.currentTarget.parentElement!.className = "w-9 h-9 rounded-full bg-lavender-100 flex items-center justify-center text-lavender-500 font-bold";
                    e.currentTarget.parentElement!.innerText = "旅";
                  }}
                />
              </div>
-             <h1 className="text-xl font-bold tracking-tight text-gray-800">艾瑪的福岡之旅</h1>
+             <h1 className="text-lg font-bold tracking-tight text-gray-800">艾瑪的福岡之旅</h1>
           </div>
 
-          {/* Shopping Bag Button - Top Right */}
-          <button 
-            onClick={() => setActiveTab('shopping')}
-            className={clsx(
-              "p-2 rounded-full transition-colors active:scale-95",
-              activeTab === 'shopping' 
-                ? "bg-lavender-100 text-lavender-600" 
-                : "text-gray-400 hover:bg-gray-50 hover:text-lavender-500"
+          {/* Right: Add Button (Only visible in Itinerary Mode & NOT Prep tab) */}
+          <div className="flex items-center">
+            {viewMode === 'itinerary' && activeTab !== 'prep' && (
+              <button
+                onClick={() => itineraryPageRef.current?.openAddModal()}
+                className="w-9 h-9 rounded-full bg-lavender-50 text-lavender-500 flex items-center justify-center hover:bg-lavender-100 active:scale-95 transition-all"
+              >
+                <Plus size={20} strokeWidth={2.5} />
+              </button>
             )}
-            aria-label="開啟購物清單"
-          >
-            <ShoppingBag size={24} />
-          </button>
-        </div>
-
-        {/* Tab Navigation - Scrollable on mobile */}
-        <div className="border-t border-gray-100 bg-white/95 backdrop-blur">
-          <div className="max-w-md mx-auto flex overflow-x-auto no-scrollbar py-2 px-2 gap-1 snap-x">
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={clsx(
-                    'flex-shrink-0 flex flex-col items-center justify-center min-w-[72px] py-2 px-1 rounded-xl transition-all snap-start',
-                    isActive 
-                      ? 'bg-lavender-400 text-white shadow-md shadow-lavender-200 scale-100' 
-                      : 'bg-transparent text-gray-500 hover:bg-gray-50 scale-95'
-                  )}
-                >
-                  <span className={clsx("text-xs font-semibold", isActive ? "text-lavender-50" : "text-gray-400")}>
-                    {tab.label}
-                  </span>
-                  <span className={clsx("text-sm font-bold leading-tight", isActive ? "text-white" : "text-gray-600")}>
-                    {tab.subLabel}
-                  </span>
-                </button>
-              );
-            })}
           </div>
         </div>
+
+        {/* Tab Navigation (Only visible in Itinerary Mode) */}
+        {viewMode === 'itinerary' && (
+          <div className="border-t border-gray-100 bg-white/95 backdrop-blur animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="max-w-md mx-auto flex overflow-x-auto no-scrollbar py-2 px-2 gap-1 snap-x">
+              {TABS.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={clsx(
+                      'flex-shrink-0 flex flex-col items-center justify-center min-w-[72px] py-2 px-1 rounded-xl transition-all snap-start',
+                      isActive 
+                        ? 'bg-lavender-400 text-white shadow-md shadow-lavender-200 scale-100' 
+                        : 'bg-transparent text-gray-500 hover:bg-gray-50 scale-95'
+                    )}
+                  >
+                    <span className={clsx("text-xs font-semibold", isActive ? "text-lavender-50" : "text-gray-400")}>
+                      {tab.label}
+                    </span>
+                    <span className={clsx("text-sm font-bold leading-tight", isActive ? "text-white" : "text-gray-600")}>
+                      {tab.subLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-md mx-auto w-full relative">
+      <main className="flex-1 max-w-md mx-auto w-full relative pb-28">
         {renderContent()}
       </main>
+
+      {/* Floating Bottom Navigation Bar */}
+      <div className="fixed bottom-8 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+        <div className="bg-white/90 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 rounded-full px-8 py-3 flex items-center gap-10 pointer-events-auto">
+          
+          {/* Shopping Tab */}
+          <button 
+            onClick={() => setViewMode('shopping')}
+            className={clsx(
+              "flex flex-col items-center gap-1 transition-all duration-200",
+              viewMode === 'shopping' ? "text-lavender-500 scale-110" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <ShoppingBag size={16} strokeWidth={viewMode === 'shopping' ? 2.5 : 2} />
+            <span className="text-[10px] font-bold">購物清單</span>
+          </button>
+
+          {/* Itinerary Tab */}
+          <button 
+            onClick={() => setViewMode('itinerary')}
+            className={clsx(
+              "flex flex-col items-center gap-1 transition-all duration-200",
+              viewMode === 'itinerary' ? "text-lavender-500 scale-110" : "text-gray-400 hover:text-gray-600"
+            )}
+          >
+            <Calendar size={16} strokeWidth={viewMode === 'itinerary' ? 2.5 : 2} />
+            <span className="text-[10px] font-bold">行程規劃</span>
+          </button>
+
+          {/* Settings Tab */}
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex flex-col items-center gap-1 transition-all duration-200 text-gray-400 hover:text-gray-600 active:scale-95"
+          >
+            <Settings size={16} strokeWidth={2} />
+            <span className="text-[10px] font-bold">備份設定</span>
+          </button>
+          
+        </div>
+      </div>
+
+      {/* Settings Modal */}
+      <Modal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        title="設定與備份"
+      >
+        <div className="space-y-6 py-2">
+          {/* Backup Section */}
+          <div className="bg-lavender-50 p-4 rounded-xl">
+            <h3 className="font-bold text-lavender-700 flex items-center gap-2 mb-2">
+              <Download size={20} />
+              備份資料
+            </h3>
+            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+              將目前的行程、購物清單、行前準備等所有資料下載成檔案保存。建議在更新 App 前先進行備份。
+            </p>
+            <Button onClick={handleBackup} className="w-full bg-lavender-400 hover:bg-lavender-500 text-white font-bold h-11">
+              下載備份檔案 (.json)
+            </Button>
+          </div>
+
+          {/* Restore Section */}
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <h3 className="font-bold text-gray-700 flex items-center gap-2 mb-2">
+              <Upload size={20} />
+              還原資料
+            </h3>
+            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+              選取之前的備份檔案來還原資料。
+              <br />
+              <span className="text-red-400 text-xs">注意：目前的資料將會被覆蓋。</span>
+            </p>
+            <input 
+              type="file" 
+              ref={fileInputRef}
+              onChange={handleRestore}
+              accept=".json"
+              className="hidden" 
+            />
+            <Button 
+              variant="secondary" 
+              onClick={() => fileInputRef.current?.click()} 
+              className="w-full h-11 font-medium"
+            >
+              選取檔案並還原
+            </Button>
+          </div>
+
+          <div className="text-center pt-4 border-t border-gray-100">
+             <p className="text-xs text-gray-400">艾瑪的福岡之旅 v1.2.0</p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
