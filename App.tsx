@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ShoppingBag, Settings, Calendar, Plus } from 'lucide-react';
+import { ShoppingBag, Settings, Calendar, Plus, Plane } from 'lucide-react';
 import { TABS, INITIAL_TODOS, INITIAL_ITINERARY, INITIAL_SHOPPING_LIST } from './constants';
 import { TabConfig, TodosState, ItineraryState, ItineraryItem, ShoppingAlbum } from './types';
 import { PreTripPage } from './components/PreTripPage';
@@ -153,6 +153,9 @@ const App: React.FC = () => {
     );
   };
 
+  // State to track if image failed to load, to switch to icon fallback
+  const [logoError, setLogoError] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#FDFDFF] font-sans text-gray-900 flex flex-col">
       {/* Top Header */}
@@ -161,19 +164,19 @@ const App: React.FC = () => {
           
           {/* Left: Logo & Title */}
           <div className="flex items-center gap-3">
-             <div className="w-9 h-9 rounded-full overflow-hidden shadow-sm border border-lavender-100 flex-shrink-0">
-               <img 
-                 src="./icon.png" 
-                 alt="Logo" 
-                 className="w-full h-full object-cover"
-                 onError={(e) => {
-                   e.currentTarget.style.display = 'none';
-                   e.currentTarget.parentElement!.className = "w-9 h-9 rounded-full bg-lavender-100 flex items-center justify-center text-lavender-500 font-bold";
-                   e.currentTarget.parentElement!.innerText = "旅";
-                 }}
-               />
+             <div className="w-9 h-9 rounded-full overflow-hidden shadow-sm border border-lavender-100 flex-shrink-0 bg-lavender-50 flex items-center justify-center">
+               {!logoError ? (
+                 <img 
+                   src="logo.png?v=5" 
+                   alt="Logo" 
+                   className="w-full h-full object-cover"
+                   onError={() => setLogoError(true)}
+                 />
+               ) : (
+                 <Plane size={20} className="text-lavender-400" />
+               )}
              </div>
-             <h1 className="text-lg font-bold tracking-tight text-gray-800">艾瑪ㄉ福岡之旅✨</h1>
+             <h1 className="text-lg font-bold tracking-tight text-gray-800">艾瑪ㄉ福岡獨旅✨</h1>
           </div>
 
           {/* Right: Add Button (Only visible in Itinerary Mode & NOT Prep tab) */}
