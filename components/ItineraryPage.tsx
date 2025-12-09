@@ -430,7 +430,7 @@ export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>
                     <input 
                       type="time"
                       required
-                      className="block w-full min-w-0 max-w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lavender-200 outline-none text-base shadow-sm appearance-none"
+                      className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lavender-200 outline-none text-base shadow-sm"
                       value={formTime}
                       onChange={e => setFormTime(e.target.value)}
                     />
@@ -494,7 +494,7 @@ export const ItineraryPage = forwardRef<ItineraryPageHandle, ItineraryPageProps>
                        <input 
                         type="time"
                         required={formIsReserved}
-                        className="block w-full min-w-0 max-w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lavender-200 outline-none text-base shadow-sm appearance-none"
+                        className="w-full h-12 px-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lavender-200 outline-none text-base shadow-sm"
                         value={formReservationTime}
                         onChange={e => setFormReservationTime(e.target.value)}
                       />
