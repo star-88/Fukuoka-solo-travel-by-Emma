@@ -167,7 +167,7 @@ const App: React.FC = () => {
              <div className="w-9 h-9 rounded-full overflow-hidden shadow-sm border border-lavender-100 flex-shrink-0 bg-lavender-50 flex items-center justify-center">
                {!logoError ? (
                  <img 
-                   src="logo.png?v=5" 
+                   src="public/logo.png?v=5" 
                    alt="Logo" 
                    className="w-full h-full object-cover"
                    onError={() => setLogoError(true)}
