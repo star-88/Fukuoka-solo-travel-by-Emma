@@ -14,6 +14,11 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
   const [activeAlbumId, setActiveAlbumId] = useState<string | null>(null);
   const [isAddingMode, setIsAddingMode] = useState(false);
   
+  // State for Long Press Delete Mode on Albums
+  const [deletableAlbumId, setDeletableAlbumId] = useState<string | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressTriggered = useRef(false);
+  
   // New Item/Album Form State
   const [newName, setNewName] = useState('');
   const [newImageUrl, setNewImageUrl] = useState('');
@@ -25,13 +30,10 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
   // --- Navigation Logic Fix ---
   const handleBack = () => {
     if (isAddingMode) {
-      // If adding, just close the form and stay in the current view (Album or List)
       setIsAddingMode(false);
-      // Optional: Clear form
       setNewName('');
       setNewImageUrl('');
     } else if (activeAlbumId) {
-      // If viewing an album, go back to album list
       setActiveAlbumId(null);
     }
   };
@@ -43,6 +45,54 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
       return activeAlbumId ? '新增商品' : '新增相簿';
     }
     return activeAlbum ? activeAlbum.name : '購物清單';
+  };
+
+  // --- Long Press Logic for Albums ---
+  const handleTouchStart = (id: string) => {
+    isLongPressTriggered.current = false;
+    longPressTimer.current = setTimeout(() => {
+      isLongPressTriggered.current = true;
+      setDeletableAlbumId(id);
+      if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
+    }, 600); // 600ms threshold
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleTouchMove = () => {
+    // Cancel long press if user scrolls
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleAlbumClick = (id: string) => {
+    // If it was a long press event, do not navigate
+    if (isLongPressTriggered.current) {
+      isLongPressTriggered.current = false;
+      return;
+    }
+
+    // If currently in delete mode for this album, toggle it off
+    if (deletableAlbumId === id) {
+      setDeletableAlbumId(null);
+      return;
+    }
+
+    // If another album is in delete mode, clear it
+    if (deletableAlbumId) {
+      setDeletableAlbumId(null);
+      return;
+    }
+
+    // Normal navigation
+    setActiveAlbumId(id);
   };
 
   // --- Image Handling Logic (Compression) ---
@@ -72,7 +122,7 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
         img.src = event.target?.result as string;
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800; // Limit width to save storage
+          const MAX_WIDTH = 800;
           const scaleSize = MAX_WIDTH / img.width;
           
           let width = img.width;
@@ -89,7 +139,6 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
           
-          // Compress to JPEG with 0.6 quality
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
           resolve(compressedBase64);
         };
@@ -103,7 +152,6 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
     if (!newName.trim()) return;
 
     if (activeAlbumId) {
-      // Create Item
       const newItem: ShoppingItem = {
         id: `item-${Date.now()}`,
         name: newName.trim(),
@@ -120,7 +168,6 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
       onUpdateAlbums(updatedAlbums);
 
     } else {
-      // Create Album
       const newAlbum: ShoppingAlbum = {
         id: `album-${Date.now()}`,
         name: newName.trim(),
@@ -166,6 +213,7 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
     e.stopPropagation();
     if (!window.confirm('確定要刪除整個相簿嗎？')) return;
     onUpdateAlbums(albums.filter(a => a.id !== albumId));
+    setDeletableAlbumId(null);
   };
 
   const renderContent = () => {
@@ -180,7 +228,6 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
                 className="relative group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col"
                 onClick={() => toggleItemCheck(item.id)}
               >
-                {/* Image Area */}
                 <div className="aspect-square bg-gray-100 w-full relative">
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
@@ -190,7 +237,6 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
                     </div>
                   )}
                   
-                  {/* Overlay for checked state */}
                   {item.checked && (
                     <div className="absolute inset-0 bg-lavender-500/40 flex items-center justify-center backdrop-blur-[1px]">
                        <div className="bg-white rounded-full p-2 shadow-lg">
@@ -200,13 +246,11 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
                   )}
                 </div>
 
-                {/* Content Area */}
                 <div className="p-3 bg-white flex items-center justify-between flex-1">
                   <span className={clsx("font-medium text-sm truncate", item.checked ? "text-gray-400 line-through" : "text-gray-700")}>
                     {item.name}
                   </span>
                   
-                  {/* Circle Checkbox Visual */}
                   <div className={clsx(
                     "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ml-2",
                     item.checked ? "bg-lavender-400 border-lavender-400" : "border-gray-300 bg-transparent"
@@ -215,7 +259,6 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
                   </div>
                 </div>
 
-                {/* Delete Button */}
                 <button 
                   onClick={(e) => deleteItem(e, item.id)}
                   className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
@@ -225,7 +268,6 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
               </div>
             ))}
 
-            {/* Add Item Button (Card Style) */}
             <button 
               onClick={() => setIsAddingMode(true)}
               className="aspect-square rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:bg-white hover:border-lavender-300 hover:text-lavender-500 transition-colors gap-2 bg-gray-50/50"
@@ -238,31 +280,54 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
       );
     }
 
-    // --- Albums View ---
+    // --- Albums View (With Long Press Logic) ---
     return (
       <div className="grid grid-cols-2 gap-4">
-        {albums.map(album => (
-          <div 
-            key={album.id}
-            className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow relative group cursor-pointer border border-transparent hover:border-lavender-100"
-            onClick={() => setActiveAlbumId(album.id)}
-          >
-             <div className="bg-lavender-50 w-12 h-12 rounded-xl flex items-center justify-center text-lavender-500 mb-3">
-               <Folder size={24} fill="currentColor" className="text-lavender-200" />
-             </div>
-             <h3 className="font-bold text-gray-700 truncate">{album.name}</h3>
-             <p className="text-xs text-gray-400">{album.items.length} 個商品</p>
-
-             <button 
-                onClick={(e) => deleteAlbum(e, album.id)}
-                className="absolute top-3 right-3 text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 size={16} />
-              </button>
-          </div>
-        ))}
+        {albums.map(album => {
+          const isDeletable = deletableAlbumId === album.id;
+          return (
+            <div 
+              key={album.id}
+              className={clsx(
+                "bg-white p-4 rounded-2xl shadow-sm transition-all relative group cursor-pointer border select-none",
+                isDeletable ? "border-red-200 ring-2 ring-red-100 scale-[0.98]" : "border-transparent hover:border-lavender-100 hover:shadow-md"
+              )}
+              onTouchStart={() => handleTouchStart(album.id)}
+              onTouchEnd={handleTouchEnd}
+              onTouchMove={handleTouchMove}
+              onClick={() => handleAlbumClick(album.id)}
+              onContextMenu={(e) => e.preventDefault()} // Prevent native context menu on long press
+            >
+               <div className={clsx(
+                 "w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-colors",
+                 isDeletable ? "bg-red-50 text-red-400" : "bg-lavender-50 text-lavender-500"
+               )}>
+                 <Folder size={24} fill="currentColor" className={isDeletable ? "text-red-200" : "text-lavender-200"} />
+               </div>
+               <h3 className="font-bold text-gray-700 truncate">{album.name}</h3>
+               <p className="text-xs text-gray-400">{album.items.length} 個商品</p>
+  
+               {/* Delete Button - Only visible when in Delete Mode */}
+               <button 
+                  onClick={(e) => deleteAlbum(e, album.id)}
+                  className={clsx(
+                    "absolute -top-2 -right-2 p-2 rounded-full text-white shadow-md transition-all z-10",
+                    isDeletable 
+                      ? "bg-red-500 opacity-100 scale-100 pointer-events-auto" 
+                      : "bg-red-500 opacity-0 scale-50 pointer-events-none"
+                  )}
+                >
+                  <Trash2 size={16} />
+                </button>
+                
+                {/* Visual hint for delete mode */}
+                {isDeletable && (
+                  <div className="absolute inset-0 bg-red-50/10 rounded-2xl pointer-events-none" />
+                )}
+            </div>
+          );
+        })}
         
-        {/* Add Album Button */}
         <button 
           onClick={() => setIsAddingMode(true)}
           className="bg-gray-50/50 p-4 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:bg-white hover:border-lavender-300 hover:text-lavender-500 transition-colors min-h-[120px] gap-2"
@@ -277,12 +342,18 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
   };
 
   return (
-    <div className="p-4 pb-24 min-h-full animate-in fade-in duration-300">
+    <div className="p-4 pb-24 min-h-full animate-in fade-in duration-300" onClick={() => {
+      // Click empty space to cancel delete mode
+      if (deletableAlbumId) setDeletableAlbumId(null);
+    }}>
       {/* Page Header */}
       <div className="flex items-center gap-2 mb-6 sticky top-0 bg-[#FDFDFF]/95 backdrop-blur-sm z-20 py-2">
         {showBackButton ? (
           <button 
-            onClick={handleBack} 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleBack();
+            }} 
             className="p-1.5 -ml-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
           >
             <ArrowLeft size={24} />
@@ -297,8 +368,7 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
         </h2>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto" onClick={(e) => e.stopPropagation()}>
         {isAddingMode ? (
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm animate-in fade-in zoom-in-95 duration-200">
             <h3 className="text-lg font-bold text-gray-800 mb-4">
@@ -323,7 +393,6 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">商品照片 (選填)</label>
                     
-                    {/* Hidden Native File Input */}
                     <input
                       type="file"
                       ref={fileInputRef}

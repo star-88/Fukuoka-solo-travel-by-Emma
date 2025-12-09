@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Plus, Trash2, Circle, CheckCircle2 } from 'lucide-react';
 import { TodoItem } from '../types';
@@ -103,14 +104,14 @@ const TodoItemRow: React.FC<TodoItemRowProps> = ({ item, onToggle, onDelete }) =
         onClick={handleClick}
       >
         <div className={clsx(
-          "transition-colors text-lavender-400",
+          "transition-colors text-lavender-400 shrink-0",
           item.completed && "text-lavender-300"
         )}>
           {item.completed ? <CheckCircle2 size={22} fill="#B481BB" className="text-white" /> : <Circle size={22} />}
         </div>
         
         <span className={clsx(
-          "flex-1 text-sm font-medium transition-colors",
+          "flex-1 text-sm font-medium transition-colors break-all",
           item.completed ? "text-gray-400 line-through" : "text-gray-700"
         )}>
           {item.text}
@@ -154,13 +155,13 @@ export const TodoSection: React.FC<TodoSectionProps> = ({
   };
 
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3 px-1">
+    <div className="mb-6 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+      <div className="flex items-center gap-2 mb-4 px-1">
         {icon}
         <h3 className="font-bold text-gray-700 text-lg">{title}</h3>
       </div>
 
-      <div className="space-y-0.5">
+      <div className="space-y-1">
         {items.map((item) => (
           <TodoItemRow 
             key={item.id} 
@@ -169,18 +170,23 @@ export const TodoSection: React.FC<TodoSectionProps> = ({
             onDelete={onDelete} 
           />
         ))}
+        {items.length === 0 && (
+            <div className="text-center py-4 text-gray-400 text-sm">
+                目前沒有項目，新增一個吧！
+            </div>
+        )}
       </div>
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-4 flex gap-2">
         <input
           type="text"
           value={newItemText}
           onChange={(e) => setNewItemText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="新增項目..."
-          className="flex-1 px-4 py-3 bg-white border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-lavender-200 outline-none shadow-sm"
+          className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-lavender-200 outline-none shadow-sm transition-colors focus:bg-white"
         />
-        <Button size="sm" onClick={handleAdd} className="rounded-xl aspect-square p-0 w-[46px] h-[46px] flex items-center justify-center shadow-sm">
+        <Button size="sm" onClick={handleAdd} className="rounded-xl aspect-square p-0 w-[46px] h-[46px] flex items-center justify-center shadow-sm shrink-0">
           <Plus size={20} />
         </Button>
       </div>
