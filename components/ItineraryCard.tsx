@@ -139,8 +139,19 @@ export const ItineraryCard: React.FC<ItineraryCardProps> = ({ item, onDelete, on
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h4 className="font-bold text-[#515152] truncate text-base">
-                  {item.title}
+                <h4 className="font-bold text-[#515152] text-base flex items-center gap-2 leading-tight">
+                  <span>{item.title}</span>
+                  {item.link && (
+                    <a 
+                      href={item.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-orange-400 opacity-80 hover:opacity-100"
+                      onClick={(e) => e.stopPropagation()} 
+                    >
+                      <MapPin size={16} />
+                    </a>
+                  )}
                 </h4>
               </div>
               <div className="flex items-center gap-2">
@@ -151,18 +162,6 @@ export const ItineraryCard: React.FC<ItineraryCardProps> = ({ item, onDelete, on
                     <CheckCircle2 size={10} />
                     {item.reservationTime ? `已預訂 ${item.reservationTime}` : '已預訂'}
                   </span>
-                )}
-                
-                {item.link && (
-                    <a 
-                    href={item.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-orange-400 hover:text-orange-600 text-xs flex items-center gap-0.5"
-                    onClick={(e) => e.stopPropagation()}
-                    >
-                    <MapPin size={10} /> 地圖
-                    </a>
                 )}
               </div>
               
