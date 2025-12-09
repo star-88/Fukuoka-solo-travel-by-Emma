@@ -16,6 +16,9 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
   
   // State for Long Press Delete Mode on Albums
   const [deletableAlbumId, setDeletableAlbumId] = useState<string | null>(null);
+  // State for Long Press Delete Mode on Items
+  const [deletableItemId, setDeletableItemId] = useState<string | null>(null);
+  
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressTriggered = useRef(false);
   
@@ -35,6 +38,7 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
       setNewImageUrl('');
     } else if (activeAlbumId) {
       setActiveAlbumId(null);
+      setDeletableItemId(null); // Clear item delete mode when exiting album
     }
   };
 
@@ -47,12 +51,16 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
     return activeAlbum ? activeAlbum.name : '購物清單';
   };
 
-  // --- Long Press Logic for Albums ---
-  const handleTouchStart = (id: string) => {
+  // --- Long Press Logic (Shared for Albums & Items) ---
+  const handleTouchStart = (id: string, type: 'album' | 'item') => {
     isLongPressTriggered.current = false;
     longPressTimer.current = setTimeout(() => {
       isLongPressTriggered.current = true;
-      setDeletableAlbumId(id);
+      if (type === 'album') {
+        setDeletableAlbumId(id);
+      } else {
+        setDeletableItemId(id);
+      }
       if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
     }, 600); // 600ms threshold
   };
@@ -73,26 +81,31 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
   };
 
   const handleAlbumClick = (id: string) => {
-    // If it was a long press event, do not navigate
     if (isLongPressTriggered.current) {
       isLongPressTriggered.current = false;
       return;
     }
 
-    // If currently in delete mode for this album, toggle it off
-    if (deletableAlbumId === id) {
+    if (deletableAlbumId === id || deletableAlbumId) {
       setDeletableAlbumId(null);
       return;
     }
 
-    // If another album is in delete mode, clear it
-    if (deletableAlbumId) {
-      setDeletableAlbumId(null);
-      return;
-    }
-
-    // Normal navigation
     setActiveAlbumId(id);
+  };
+
+  const handleItemClick = (id: string) => {
+    if (isLongPressTriggered.current) {
+        isLongPressTriggered.current = false;
+        return;
+    }
+
+    if (deletableItemId === id || deletableItemId) {
+        setDeletableItemId(null);
+        return;
+    }
+
+    toggleItemCheck(id);
   };
 
   // --- Image Handling Logic (Compression) ---
@@ -207,6 +220,7 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
       return album;
     });
     onUpdateAlbums(updatedAlbums);
+    setDeletableItemId(null);
   };
 
   const deleteAlbum = (e: React.MouseEvent, albumId: string) => {
@@ -222,51 +236,70 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
       return (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            {activeAlbum.items.map(item => (
-              <div 
-                key={item.id} 
-                className="relative group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col"
-                onClick={() => toggleItemCheck(item.id)}
-              >
-                <div className="aspect-square bg-gray-100 w-full relative">
-                  {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300">
-                      <ImageIcon size={32} />
-                    </div>
+            {activeAlbum.items.map(item => {
+              const isDeletable = deletableItemId === item.id;
+              return (
+                <div 
+                  key={item.id} 
+                  className={clsx(
+                      "relative group bg-white rounded-2xl overflow-hidden shadow-sm transition-all flex flex-col select-none",
+                      isDeletable ? "ring-2 ring-red-100 border border-red-200 scale-[0.98]" : "hover:shadow-md"
                   )}
-                  
-                  {item.checked && (
-                    <div className="absolute inset-0 bg-lavender-500/40 flex items-center justify-center backdrop-blur-[1px]">
-                       <div className="bg-white rounded-full p-2 shadow-lg">
-                         <Check size={24} className="text-lavender-500" strokeWidth={3} />
-                       </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-3 bg-white flex items-center justify-between flex-1">
-                  <span className={clsx("font-medium text-sm truncate", item.checked ? "text-gray-400 line-through" : "text-gray-700")}>
-                    {item.name}
-                  </span>
-                  
-                  <div className={clsx(
-                    "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ml-2",
-                    item.checked ? "bg-lavender-400 border-lavender-400" : "border-gray-300 bg-transparent"
-                  )}>
-                    {item.checked && <Check size={12} className="text-white" strokeWidth={3} />}
-                  </div>
-                </div>
-
-                <button 
-                  onClick={(e) => deleteItem(e, item.id)}
-                  className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                  onTouchStart={() => handleTouchStart(item.id, 'item')}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchMove={handleTouchMove}
+                  onClick={() => handleItemClick(item.id)}
+                  onContextMenu={(e) => e.preventDefault()}
                 >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
+                  <div className="aspect-square bg-gray-100 w-full relative">
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300">
+                        <ImageIcon size={32} />
+                      </div>
+                    )}
+                    
+                    {item.checked && (
+                      <div className="absolute inset-0 bg-lavender-500/40 flex items-center justify-center backdrop-blur-[1px]">
+                        <div className="bg-white rounded-full p-2 shadow-lg">
+                          <Check size={24} className="text-lavender-500" strokeWidth={3} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 bg-white flex items-center justify-between flex-1">
+                    <span className={clsx("font-medium text-sm truncate", item.checked ? "text-gray-400 line-through" : "text-gray-700")}>
+                      {item.name}
+                    </span>
+                    
+                    <div className={clsx(
+                      "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ml-2",
+                      item.checked ? "bg-lavender-400 border-lavender-400" : "border-gray-300 bg-transparent"
+                    )}>
+                      {item.checked && <Check size={12} className="text-white" strokeWidth={3} />}
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={(e) => deleteItem(e, item.id)}
+                    className={clsx(
+                        "absolute top-2 right-2 p-1.5 rounded-full text-white shadow-sm z-10 transition-all",
+                        isDeletable 
+                        ? "bg-red-500 opacity-100 scale-100 pointer-events-auto" 
+                        : "bg-red-500 opacity-0 scale-50 pointer-events-none"
+                    )}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+
+                  {isDeletable && (
+                    <div className="absolute inset-0 bg-red-50/10 pointer-events-none" />
+                  )}
+                </div>
+              );
+            })}
 
             <button 
               onClick={() => setIsAddingMode(true)}
@@ -292,11 +325,11 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
                 "bg-white p-4 rounded-2xl shadow-sm transition-all relative group cursor-pointer border select-none",
                 isDeletable ? "border-red-200 ring-2 ring-red-100 scale-[0.98]" : "border-transparent hover:border-lavender-100 hover:shadow-md"
               )}
-              onTouchStart={() => handleTouchStart(album.id)}
+              onTouchStart={() => handleTouchStart(album.id, 'album')}
               onTouchEnd={handleTouchEnd}
               onTouchMove={handleTouchMove}
               onClick={() => handleAlbumClick(album.id)}
-              onContextMenu={(e) => e.preventDefault()} // Prevent native context menu on long press
+              onContextMenu={(e) => e.preventDefault()}
             >
                <div className={clsx(
                  "w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-colors",
@@ -307,7 +340,6 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
                <h3 className="font-bold text-gray-700 truncate">{album.name}</h3>
                <p className="text-xs text-gray-400">{album.items.length} 個商品</p>
   
-               {/* Delete Button - Only visible when in Delete Mode */}
                <button 
                   onClick={(e) => deleteAlbum(e, album.id)}
                   className={clsx(
@@ -320,7 +352,6 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
                   <Trash2 size={16} />
                 </button>
                 
-                {/* Visual hint for delete mode */}
                 {isDeletable && (
                   <div className="absolute inset-0 bg-red-50/10 rounded-2xl pointer-events-none" />
                 )}
@@ -345,6 +376,7 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
     <div className="p-4 pb-24 min-h-full animate-in fade-in duration-300" onClick={() => {
       // Click empty space to cancel delete mode
       if (deletableAlbumId) setDeletableAlbumId(null);
+      if (deletableItemId) setDeletableItemId(null);
     }}>
       {/* Page Header */}
       <div className="flex items-center gap-2 mb-6 sticky top-0 bg-[#FDFDFF]/95 backdrop-blur-sm z-20 py-2">
