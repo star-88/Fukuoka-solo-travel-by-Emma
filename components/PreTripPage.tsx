@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { ClipboardList, Briefcase, Luggage } from 'lucide-react';
-import { TodosState, TodoCategory } from '../types';
+import { TodosState, TodoCategory, TodoItem } from '../types';
 import { TodoSection } from './TodoSection';
 
 interface PreTripPageProps {
@@ -26,6 +27,11 @@ export const PreTripPage: React.FC<PreTripPageProps> = ({ todos, onUpdate }) => 
     onUpdate({ ...todos, [category]: list });
   };
 
+  // Helper function to sort items: Unchecked first, Checked last
+  const getSortedItems = (items: TodoItem[]) => {
+    return [...items].sort((a, b) => Number(a.completed) - Number(b.completed));
+  };
+
   return (
     <div className="p-4 pb-24 max-w-2xl mx-auto animate-in fade-in duration-500">
       <div className="mb-6">
@@ -36,7 +42,7 @@ export const PreTripPage: React.FC<PreTripPageProps> = ({ todos, onUpdate }) => 
       <TodoSection 
         title="行前任務" 
         icon={<ClipboardList className="text-lavender-400" />}
-        items={todos.tasks}
+        items={getSortedItems(todos.tasks)}
         onAdd={(text) => updateList('tasks', 'add', text)}
         onToggle={(id) => updateList('tasks', 'toggle', id)}
         onDelete={(id) => updateList('tasks', 'delete', id)}
@@ -45,7 +51,7 @@ export const PreTripPage: React.FC<PreTripPageProps> = ({ todos, onUpdate }) => 
       <TodoSection 
         title="隨身行李" 
         icon={<Briefcase className="text-lavender-400" />}
-        items={todos.carryOn}
+        items={getSortedItems(todos.carryOn)}
         onAdd={(text) => updateList('carryOn', 'add', text)}
         onToggle={(id) => updateList('carryOn', 'toggle', id)}
         onDelete={(id) => updateList('carryOn', 'delete', id)}
@@ -54,7 +60,7 @@ export const PreTripPage: React.FC<PreTripPageProps> = ({ todos, onUpdate }) => 
       <TodoSection 
         title="托運行李" 
         icon={<Luggage className="text-lavender-400" />}
-        items={todos.checked}
+        items={getSortedItems(todos.checked)}
         onAdd={(text) => updateList('checked', 'add', text)}
         onToggle={(id) => updateList('checked', 'toggle', id)}
         onDelete={(id) => updateList('checked', 'delete', id)}
