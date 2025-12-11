@@ -135,7 +135,7 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
         img.src = event.target?.result as string;
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
+          const MAX_WIDTH = 600; // Further reduced for safety
           const scaleSize = MAX_WIDTH / img.width;
           
           let width = img.width;
@@ -152,7 +152,8 @@ export const ShoppingPage: React.FC<ShoppingPageProps> = ({ albums, onUpdateAlbu
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
           
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+          // High compression to save space
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.5); 
           resolve(compressedBase64);
         };
         img.onerror = (error) => reject(error);

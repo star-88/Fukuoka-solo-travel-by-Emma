@@ -22,30 +22,61 @@ const App: React.FC = () => {
   // -- State Management with LocalStorage Persistence --
   
   const [todos, setTodos] = useState<TodosState>(() => {
-    const saved = localStorage.getItem('lavender_todos');
-    return saved ? JSON.parse(saved) : INITIAL_TODOS;
+    try {
+      const saved = localStorage.getItem('lavender_todos');
+      return saved ? JSON.parse(saved) : INITIAL_TODOS;
+    } catch (e) {
+      console.error("Failed to load todos", e);
+      return INITIAL_TODOS;
+    }
   });
 
   const [itinerary, setItinerary] = useState<ItineraryState>(() => {
-    const saved = localStorage.getItem('lavender_itinerary');
-    return saved ? JSON.parse(saved) : INITIAL_ITINERARY;
+    try {
+      const saved = localStorage.getItem('lavender_itinerary');
+      return saved ? JSON.parse(saved) : INITIAL_ITINERARY;
+    } catch (e) {
+      console.error("Failed to load itinerary", e);
+      return INITIAL_ITINERARY;
+    }
   });
 
   const [shoppingAlbums, setShoppingAlbums] = useState<ShoppingAlbum[]>(() => {
-    const saved = localStorage.getItem('lavender_shopping');
-    return saved ? JSON.parse(saved) : INITIAL_SHOPPING_LIST;
+    try {
+      const saved = localStorage.getItem('lavender_shopping');
+      return saved ? JSON.parse(saved) : INITIAL_SHOPPING_LIST;
+    } catch (e) {
+      console.error("Failed to load shopping list", e);
+      return INITIAL_SHOPPING_LIST;
+    }
   });
 
+  // --- Safe LocalStorage Setters ---
+
   useEffect(() => {
-    localStorage.setItem('lavender_todos', JSON.stringify(todos));
+    try {
+      localStorage.setItem('lavender_todos', JSON.stringify(todos));
+    } catch (e) {
+      console.error("Storage quota exceeded (Todos)", e);
+    }
   }, [todos]);
 
   useEffect(() => {
-    localStorage.setItem('lavender_itinerary', JSON.stringify(itinerary));
+    try {
+      localStorage.setItem('lavender_itinerary', JSON.stringify(itinerary));
+    } catch (e) {
+      console.error("Storage quota exceeded (Itinerary)", e);
+    }
   }, [itinerary]);
 
   useEffect(() => {
-    localStorage.setItem('lavender_shopping', JSON.stringify(shoppingAlbums));
+    try {
+      localStorage.setItem('lavender_shopping', JSON.stringify(shoppingAlbums));
+    } catch (e) {
+      console.error("Storage quota exceeded (Shopping)", e);
+      // Alert user only for shopping list as images are the likely culprit
+      alert("儲存空間不足！可能是照片太多了，建議刪除一些舊照片或是使用較小的圖片。");
+    }
   }, [shoppingAlbums]);
 
   // -- Handlers --
